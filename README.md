@@ -160,9 +160,251 @@ Password: kali
 
 To check your network, open the terminal and run ip a. You should see an IP like 10.0.0.11 assigned by pfSense’s DHCP server.
 
-After that jsut type ip address in the terminal
+After that just type ip address in the terminal
 
 ![image](https://github.com/user-attachments/assets/9e378cce-b262-4ff0-9325-0ff6d956ef6b)
+
+
+# Configure the PfSense firewall
+
+Now open your terminal in Kali and type this https://10.0.0.1/
+
+![image](https://github.com/user-attachments/assets/0750a24f-2f7b-4b06-97f2-4f5724b25342)
+![image](https://github.com/user-attachments/assets/2e3a0ab1-9cf3-4e80-ae45-4a5e871a3d51)
+![image](https://github.com/user-attachments/assets/d8641b14-6f23-489a-ae09-0980893781d0)
+ accept
+
+ The default credentials are Username: admin  Password: pfsense
+
+
+## Configure the Interfaces
+Isolated Interface
+Choose OPT1
+
+ ![image](https://github.com/user-attachments/assets/8dfe56d3-b6ca-4dd5-8168-5663dc4e15a2)
+
+ for the AD_LAB Interface
+ Choose OPT2 AND RENAME IT TO AD_LAB
+ 
+\\\
+
+Optimize the DNS Resolver Service
+Go to Services > DNS Resolver
+
+![image](https://github.com/user-attachments/assets/8adef5ae-f0a9-40c6-95b4-7ccb26ec666b)
+
+![image](https://github.com/user-attachments/assets/761caf0d-9d97-4915-9774-a1e5d320ea2e)
+
+![image](https://github.com/user-attachments/assets/ee25aea5-eb52-47f1-919a-9394dbac832d)
+
+Give Kali a Static DHCP Lease
+Go to Status > DHCP Leases ( A DHCP lease is the temporary assignment of an IP address to a device by a network server. )
+
+![image](https://github.com/user-attachments/assets/4eb71f2b-59b8-46d7-9cb3-6a67407e9eb5)
+
+![image](https://github.com/user-attachments/assets/dd45e0e7-56a9-424d-a2c0-247f7d7d8272)
+set it to 10.0.0.2 then click save and apply.
+
+
+# Configure the Firewall Rules
+Create an alias for RFC1918 to reference all private IPv4 address spaces in future firewall rules.
+
+Go to Firewall > Aliases
+
+Click Add
+
+Create the alias for RFC1918 networks
+
+Click Save
+![image](https://github.com/user-attachments/assets/129ecf8e-3c3a-4c03-999a-5fe8b2bdec54)
+![image](https://github.com/user-attachments/assets/6b310a77-54d2-4aee-9785-d5b2cea93c2d)
+
+# Firewall Rule Configuration Guide
+
+This document describes how to configure firewall rules for the `LAN`, `ISOLATED`, and `AD_LAB` interfaces to enforce segmentation and control traffic. Copy this into your GitHub README or documentation.
+
+---
+
+## LAN Interface Rules
+
+**Goal:** Block LAN devices from accessing WAN subnets
+
+1. Navigate to **Firewall > Rules > LAN**.  
+2. Click **Add** to create a new rule.  
+3. Configure the rule:
+   - **Action:** Block  
+   - **Interface:** LAN  
+   - **Address Family:** IPv4 + IPv6  
+   - **Protocol:** Any  
+   - **Source:** Any  
+   - **Destination:** WAN net (or specify WAN subnet ranges)  
+   - **Description:** Block access to any on same network as host OS  
+4. Click **Save**, then **Apply Changes**.
+
+---
+
+## ISOLATED Interface Rules
+
+**Goal:** Allow DNS and access to Kali VM, block everything else
+
+1. Navigate to **Firewall > Rules > ISOLATED**.  
+2. **Rule 1:** Allow DNS lookups  
+   - **Action:** Pass  
+   - **Interface:** ISOLATED  
+   - **Address Family:** IPv4  
+   - **Protocol:** UDP  
+   - **Source:** ISOLATED net  
+   - **Destination:** ISOLATED address (gateway)  
+   - **Destination Port Range:** From 53 (DNS) to 53 (DNS)  
+   - **Description:** Allow DNS lookups to the default gateway  
+   - Click **Save** and **Apply Changes**.  
+3. **Rule 2:** Allow access to Kali VM  
+   - **Action:** Pass  
+   - **Interface:** ISOLATED  
+   - **Address Family:** IPv4  
+   - **Protocol:** Any  
+   - **Source:** ISOLATED net  
+   - **Destination:** Alias = Kali  
+   - **Description:** Allow packets to Kali VM  
+   - Click **Save** and **Apply Changes**.  
+4. **Rule 3 (Final):** Block all other traffic  
+   - **Action:** Block  
+   - **Interface:** ISOLATED  
+   - **Address Family:** IPv4 + IPv6  
+   - **Protocol:** Any  
+   - **Source:** Any  
+   - **Destination:** Any  
+   - **Description:** Block access to everything  
+   - Click **Save**, then **Apply Changes**.
+
+---
+
+## AD_LAB Interface Rules
+
+**Goal:** Allow access to Kali, internet (non-private), and default gateway; block all else
+
+1. Navigate to **Firewall > Rules > AD_LAB**.  
+2. **Rule 1:** Allow access to Kali VM  
+   - **Action:** Pass  
+   - **Interface:** AD_LAB  
+   - **Address Family:** IPv4  
+   - **Protocol:** Any  
+   - **Source:** AD_LAB net  
+   - **Destination:** Alias = Kali  
+   - **Description:** Allow packets to Kali VM  
+   - Click **Save**.  
+3. **Rule 2:** Allow internet (non-private)  
+   - **Action:** Pass  
+   - **Interface:** AD_LAB  
+   - **Address Family:** IPv4  
+   - **Protocol:** Any  
+   - **Source:** AD_LAB net  
+   - **Destination:** Alias = RFC1918 (Invert match)  
+   - **Description:** Allow packets to any non-private address  
+   - Click **Save**.  
+4. **Rule 3:** Allow access to default gateway  
+   - **Action:** Pass  
+   - **Interface:** AD_LAB  
+   - **Address Family:** IPv4  
+   - **Protocol:** Any  
+   - **Source:** AD_LAB net  
+   - **Destination:** AD_LAB address (gateway)  
+   - **Description:** Allow packets to default gateway  
+   - Click **Save**.  
+5. **Rule 4 (Final):** Block all other traffic  
+   - **Action:** Block  
+   - **Interface:** AD_LAB  
+   - **Address Family:** IPv4 + IPv6  
+   - **Protocol:** Any  
+   - **Source:** Any  
+   - **Destination:** Any  
+   - **Description:** Block everything else  
+   - Click **Save**, then **Apply Changes**.
+
+---
+
+
+It should be looking like this
+![image](https://github.com/user-attachments/assets/1c3d974f-afe4-4c8e-b15c-3fff8fbd0267)
+
+
+# FLOATING Rules Desired End State
+![image](https://github.com/user-attachments/assets/aa931948-987a-4117-91cf-72a1ba9582ba)
+
+
+## Grab Kali's New DHCP Reservation
+To identify the IP address assigned to your Kali VM via DHCP, open a terminal in Kali and run the following command:
+
+## Reset Kali's Network Interface and Get a New DHCP Lease
+
+To force Kali Linux to request a new IP address via DHCP, you can bring the network interface down and then back up using the following commands:
+
+```
+sudo ip link set eth0 down
+sudo ip link set eth0 up.
+```
+
+after this do 
+
+```
+ip a
+
+```
+
+![image](https://github.com/user-attachments/assets/78d03b06-33e2-469b-ae47-720611b8914d)
+
+
+# Adding Vulnhub VMs to Our VirtualBox Cyber Range
+
+# Mr. Robot
+
+**VM Info on Vulnhub:** [https://www.vulnhub.com/entry/mr-robot-1,151/](https://www.vulnhub.com/entry/mr-robot-1,151/)  
+**Vulnhub Download Link:** [https://download.vulnhub.com/mrrobot/mrRobot.ova](https://download.vulnhub.com/mrrobot/mrRobot.ova)
+
+---
+
+## Overview
+
+In this example, we will download a VM from Vulnhub and import it using the `.ova` file format.
+
+### What is an `.OVA` File?
+
+An Open Virtual Appliance (`.ova`) is an open standard file format used to package virtual machines for reuse across different hypervisors. The `.ova` format is directly compatible with VirtualBox, allowing easy import and setup.
+
+When you download the file, your system will usually associate it automatically with VirtualBox.
+
+---
+
+## Import the VM
+
+1. Double-click the `mrRobot.ova` file.  
+2. Set the **Name** to `Mr. Robot`.  
+3. Configure the **MAC address policy** as needed.  
+4. Click **Finish** to import the VM.
+
+---
+
+## Adjust the VM Settings
+
+1. Right-click the `Mr. Robot` VM and select **Settings**.  
+2. Add the VM to the **ISOLATED** network.  
+3. Click **OK** to save changes.
+
+---
+
+## Start the VM
+
+- Power on the VM. It should receive an IP address from pfSense in the **Isolated LAN**.  
+- If your firewall is configured correctly, Kali should be able to route to this LAN.
+
+
+
+
+
+
+
+
+
 
 
 
